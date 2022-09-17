@@ -1,55 +1,91 @@
-//* ---------------------- VARIABLES ----------------------
-var outputFolder = Folder.selectDialog("Select destination folder");
+//* ---------------------- Variables ----------------------
+var outputFolder = null;
 var nameGroupList = [];
 var operatingSystem = File.fs;
 
-//* ---------------------- LOGIC CODE ----------------------
-if (outputFolder !== null) {
-  alert("The export will take a few minutes, so just wait 😉", "Waiting");
-  var groupsList = app.activeDocument.layerSets;
-  resetLayers(groupsList);
+//*--------- Dialog Box front end --------------
+var dialogBox = new Window("dialog", "Export Groups", [100, 100, 437, 240]);
+pnl_browse = dialogBox.add("panel", [10, 10, 327, 80], "Export Groups");
+btn_select_folder = pnl_browse.add(
+  "button",
+  [10, 20, 190, 33],
+  " Select Destination Folder ",
+);
 
-  for (var groupIndex = 0; groupIndex < groupsList.length; groupIndex++) {
-    groupsList[groupIndex].visible = true;
-    var nameGroup = groupsList[groupIndex].name;
-    nameGroupList.push(nameGroup);
-    createFolder(outputFolder + "/" + nameGroup + "/");
+btn_export = pnl_browse.add("button", [245, 20, 110, 33], " Export ");
+
+text_message = dialogBox.add(
+  "statictext",
+  [10, 10, 241, 220],
+  "Select your destination folder....",
+);
+
+btn_finish = dialogBox.add("button", [260, 100, 110, 33], " Finish ");
+
+//*--------- Dialog Box functionalities --------------
+
+btn_select_folder.onClick = function () {
+  outputFolder = Folder.selectDialog("Select destination folder");
+  if (outputFolder !== null) {
+    text_message.text = "Cool, Export them, it will take some minutes....";
   }
+};
 
-  for (var indexName in nameGroupList) {
-    groupsList[indexName].visible = true;
-    var layersList = groupsList[indexName].layers;
+btn_export.onClick = function () {
+  exportLayers();
+};
 
-    for (var indexLayer = 0; indexLayer < layersList.length; indexLayer++) {
-      if (layersList[indexLayer].visible == false) {
-        layersList[indexLayer].visible = true;
-        var layerName = layersList[indexLayer].name;
+btn_finish.onClick = function () {
+  if (outputFolder !== null) {
+    dialogBox.close();
+    openFolder();
+  } else {
+    dialogBox.close();
+  }
+};
 
-        switch (operatingSystem) {
-          case "Windows":
-            windows(layerName, indexName);
-            break;
-          case "Macintosh":
-            macintosh(layerName, indexName);
-            break;
-          case "Unix":
-            unix(layerName, indexName);
-            break;
-          default:
-            break;
-        }
+//*--------- Functions --------------
 
-        layersList[indexLayer].visible = false;
-      }
+function exportLayers() {
+  if (outputFolder !== null) {
+    var groupsList = app.activeDocument.layerSets;
+    resetLayers(groupsList);
+    for (var groupIndex = 0; groupIndex < groupsList.length; groupIndex++) {
+      groupsList[groupIndex].visible = true;
+      var nameGroup = groupsList[groupIndex].name;
+      nameGroupList.push(nameGroup);
+      createFolder(outputFolder + "/" + nameGroup + "/");
     }
-    groupsList[indexName].visible = false;
+    for (var indexName in nameGroupList) {
+      groupsList[indexName].visible = true;
+      var layersList = groupsList[indexName].layers;
+      for (var indexLayer = 0; indexLayer < layersList.length; indexLayer++) {
+        if (layersList[indexLayer].visible == false) {
+          layersList[indexLayer].visible = true;
+          var layerName = layersList[indexLayer].name;
+          switch (operatingSystem) {
+            case "Windows":
+              windows(layerName, indexName);
+              break;
+            case "Macintosh":
+              macintosh(layerName, indexName);
+              break;
+            case "Unix":
+              unix(layerName, indexName);
+              break;
+            default:
+              break;
+          }
+          layersList[indexLayer].visible = false;
+        }
+      }
+      groupsList[indexName].visible = false;
+    }
+    text_message.text = "The Export process is Done....";
+  } else {
+    text_message.text = "You must select the destination folder....";
   }
-
-  alert("The Export process is Done 😃", "Done");
-  openFolder(outputFolder);
 }
-
-//* ---------------------- FUNCTIONS ----------------------
 
 function windows(_layerName, _indexName) {
   if (hasWhiteSpace(_layerName)) {
@@ -62,7 +98,7 @@ function windows(_layerName, _indexName) {
         ".png",
     );
     SaveImage(file);
-    file.rename(_layerName + ".png");
+    file.rename(_layerName + "#100" + ".png"); //*--- mise du poids pour usage personnel pour nft mais à revenir plutard pour faire une modification intérressante ---*//
   } else {
     var file = new File(
       outputFolder +
@@ -70,6 +106,7 @@ function windows(_layerName, _indexName) {
         nameGroupList[_indexName] +
         "/" +
         _layerName +
+        "#100" +
         ".png",
     );
     SaveImage(file);
@@ -99,7 +136,6 @@ function macintosh(_layerName, _indexName) {
     );
     SaveImage(file);
   }
-  //* --- Photoshop on Mac limits the length of a File object's file name to 31 characters --- .
 }
 
 function unix(_layerName, _indexName) {
@@ -113,8 +149,8 @@ function hasWhiteSpace(_nameLayer) {
   return /\s/g.test(_nameLayer);
 }
 
-function openFolder(_folderPath) {
-  var folderCreated = new Folder(_folderPath);
+function openFolder() {
+  var folderCreated = new Folder(outputFolder);
   folderCreated.execute();
 }
 
@@ -142,3 +178,7 @@ function createFolder(_path) {
   var createFolder = new Folder(_path);
   if (!createFolder.exists) createFolder.create();
 }
+
+//*--------- Dialog Box launcher --------------
+dialogBox.center();
+dialogBox.show();
